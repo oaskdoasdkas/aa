@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geolocalización de Usuario</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 20px 0;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin: 0;
+    }
+    main {
+      padding: 20px;
+      max-width: 900px;
+      margin: 20px auto;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    .info-box {
+      background-color: #f0f8ff;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .info-box p {
+      margin: 8px 0;
+      font-size: 1.1rem;
+    }
+    .status {
+      font-weight: bold;
+      color: #ff6347;
+      margin-top: 20px;
+    }
+    .loading {
+      font-size: 18px;
+      color: #007bff;
+      font-weight: bold;
+      display: none;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Geolocalización de Usuario</h1>
+  </header>
+
+  <main>
+    <div class="info-box">
+      <p><strong>Hora de Entrada:</strong> <span id="entry-time"></span></p>
+      <p><strong>IP:</strong> <span id="ip"></span></p>
+      <p><strong>País:</strong> <span id="country"></span></p>
+      <p><strong>Estado:</strong> <span id="region"></span></p>
+      <p><strong>Municipio:</strong> <span id="city"></span></p>
+      <p><strong>Ubicación Exacta:</strong> <span id="location"></span></p>
+      <p id="status" class="status"></p>
+      <p id="loading" class="loading">Cargando ubicación...</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>Geolocalización proporcionada por IPInfo y GPS.</p>
+  </footer>
+
+  <script>
+    const entryTime = new Date();
+    document.getElementById('entry-time').textContent = entryTime.toLocaleString();
+
+    const statusElement = document.getElementById('status');
+    const loadingElement = document.getElementById('loading');
+    const locationElement = document.getElementById('location');
+    const ipElement = document.getElementById('ip');
+    const countryElement = document.getElementById('country');
+    const regionElement = document.getElementById('region');
+    const cityElement = document.getElementById('city');
+
+    let isLocationDetermined = false; // Para evitar múltiples intentos después de obtener una ubicación
+
+    // Función para mostrar el estado de la geolocalización
+    function showStatus(message) {
+      statusElement.textContent = message;
+    }
+
+    // Función para obtener los datos de geolocalización usando la API IPInfo
+    function getIPInfo() {
+      const token = 'f01c886651ecad'; // Reemplaza esto con tu token de IPInfo
+      const url = `https://ipinfo.io?token=${token}`;
+
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          ipElement.textContent = data.ip;
+          countryElement.textContent = data.country;
+          regionElement.textContent = data.region;
+          cityElement.textContent = data.city;
+
+          if (!isLocationDetermined) {
+            locationElement.textContent = `Ubicación aproximada (IP): ${data.city}, ${data.region}, ${data.country}`;
+            showStatus('Ubicación obtenida desde la IP.');
+            isLocationDetermined = true;
+          }
+        })
+        .catch(error => {
+          console.error("Error al obtener datos de IPInfo:", error);
+          showStatus('No se pudo obtener información de la IP.');
+        });
+    }
+
+    // Función para obtener la geolocalización exacta usando HTML5
+    function getExactLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+
+          if (!isLocationDetermined) {
+            locationElement.textContent = `Ubicación exacta (GPS): Latitud: ${lat}, Longitud: ${lon}`;
+            showStatus('Ubicación obtenida desde el GPS.');
+            isLocationDetermined = true;
+          }
+        }, error => {
+          console.error("Error al obtener la ubicación exacta:", error);
+          showStatus('Error al obtener ubicación desde el GPS. Intentando con IP...');
+          if (!isLocationDetermined) {
+            getIPInfo(); // Intentar obtener la ubicación por IP si falla el GPS
+          }
+        });
+      } else {
+        showStatus('La geolocalización no es compatible con este navegador. Intentando con IP...');
+        getIPInfo(); // Si el navegador no soporta geolocalización, recurrimos a la IP
+      }
+    }
+
+    // Función para iniciar la geolocalización
+    function initGeolocation() {
+      loadingElement.style.display = 'block';
+      showStatus('Determinando ubicación...');
+      setTimeout(() => {
+        // Intentamos primero con el GPS
+        getExactLocation();
+
+        // Si no se obtiene ubicación dentro de 10 segundos, intentamos con IP
+        setTimeout(() => {
+          if (!isLocationDetermined) {
+            showStatus('GPS no disponible o se agotó el tiempo. Intentando con IP...');
+            getIPInfo();
+          }
+        }, 10000); // 10 segundos de espera para GPS
+      }, 100);
+    }
+
+    // Iniciar geolocalización al cargar la página
+    initGeolocation();
+  </script>
+</body>
+</html>
